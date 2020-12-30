@@ -1,11 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    
-</body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>2D game</title>
+		<style type="text/css">
+			body {
+				position: relative;
+				margin: 0;
+				padding: 0;
+			}
+			#inputContainer {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+			}
+		</style>
+	</head>
+	<body>
+		<div id="inputContainer">
+			<label for="pseudo">Pseudo :</label>
+
+			<input type="text" id="pseudo" name="pseudo" minlength="4" maxlength="20" />
+			<button onclick="commencer()">Go</button>
+		</div>
+		<script src="/socket.io/socket.io.js"></script>
+		<script type="text/javascript">
+			var socket = io();
+
+			var AllUser = [];
+
+			var hero = {
+				pseudo: null,
+				id: null,
+				speed: null,
+				x: 0,
+				y: 0,
+			};
+
+			socket.on('sendAllUser', (users) => {
+				AllUser = users;
+			});
+
+			socket.on('initUser', (user) => {
+				if (hero.id == null) {
+					hero = user;
+				}
+			});
+
+			function updateMyPseudo() {
+				socket.emit('UpdatePseudo', hero);
+			}
+
+			function updateMyPosition() {
+				socket.emit('UpdatePositions', hero);
+			}
+		</script>
+
+		<script type="text/javascript">
+			var width = window.innerWidth;
+			var height = window.innerHeight;
+
+			var canvas = document.createElement('canvas');
+			var ctx = canvas.getContext('2d');
+			canvas.width = width;
+			canvas.height = height;
+			document.body.appendChild(canvas);
+
+			var bgReady = false;
+			var bgImage = new Image();
+			bgImage.onload = function () {
+				bgReady = true;
+			};
+			bgImage.src = 'http://localhost:3000/images/back.png';
+
+			var heroReady = false;
+			var heroImage = new Image();
+			heroImage.onload = function () {
+				heroReady = true;
+			};
+			heroImage.src = 'http://localhost:3000/images/hero.png';
+
+			var keysDown = {};
+			addEventListener(
+				'keydown',
+				function (e) {
+					keysDown[e.keyCode] = true;
+				},
+				false
+			);
+
+			addEventListener(
+				'keyup',
+				function (e) {
+					delete keysDown[e.keyCode];
+				},
+				false
+			);
+
+			var update = function (modifier) {
+				if (38 in keysDown) {
+					//up
+					if (hero.y > 0) {
+						hero.y -= hero.speed * modifier;
+					}
+					updateMyPosition();
+				}
+				if (40 in keysDown) {
+					//down
+					if (hero.y < height - 30) {
+						hero.y += hero.speed * modifier;
+					}
+					updateMyPosition();
+				}
+				if (37 in keysDown) {
+					//left
+					if (hero.x > 0) {
+						hero.x -= hero.speed * modifier;
+					}
+					updateMyPosition();
+				}
+				if (39 in keysDown) {
+					//right
+					if (hero.x < width - 30) {
+						hero.x += hero.speed * modifier;
+					}
+					updateMyPosition();
+				}
+			};
+
+			var render = function () {
+				if (bgReady) {
+					ctx.drawImage(bgImage, 0, 0, width, height);
+				}
+
+				ctx.font = '20px serif';
+				for (var i = 0; i < AllUser.length; i++) {
+					ctx.fillText(AllUser[i].pseudo, AllUser[i].x + 2, AllUser[i].y - 10);
+					ctx.drawImage(heroImage, AllUser[i].x, AllUser[i].y);
+				}
+			};
+
+			var main = function () {
+				var now = Date.now();
+				var delta = now - then;
+				update(delta / 1000);
+				render();
+				then = now;
+				requestAnimationFrame(main);
+			};
+
+			var w = window;
+			requestAnimationFrame =
+				w.requestAnimationFrame ||
+				w.webkitRequestAnimationFrame ||
+				w.msRequestAnimationFrame ||
+				w.mozRequestAnimationFrame;
+
+			function resize() {
+				width = window.innerWidth;
+				height = window.innerHeight;
+				canvas.width = width;
+				canvas.height = height;
+			}
+
+			var then = Date.now();
+
+			window.onresize = resize;
+			document.documentElement.style.overflow = 'hidden'; // firefox, chrome
+			document.body.scroll = 'no';
+
+			function commencer() {
+				var pseudo = document.getElementById('pseudo').value;
+				if (pseudo == '') {
+					alert("le pseudo n'est pas valide");
+				} else {
+					hero.pseudo = pseudo;
+					updateMyPseudo();
+					document.getElementById('inputContainer').style.display = 'none';
+					main();
+				}
+			}
+		</script>
+	</body>
 </html>
